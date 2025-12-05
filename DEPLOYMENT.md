@@ -57,39 +57,20 @@ Visit your repository: https://github.com/Alanshnir/imessage_analyzer_deployable
 **On a Mac:**
 
 ```bash
-# Build the executable
+# Build the single-file executable
 pyinstaller run_analyzer.spec
-
-# The executable will be in dist/run_analyzer.app
-# For a single file executable (alternative):
-pyinstaller --onefile --noconsole run_analyzer.py
 ```
 
 **Output:**
-- `dist/run_analyzer.app` (macOS app bundle)
-- Or `dist/run_analyzer` (single executable file)
+- `dist/run_analyzer` (single executable file - no folder needed!)
 
-### Building for Windows
+**Note:** The spec file is configured for `onefile=True`, so it creates a single executable. Users just download and double-click this one file.
 
-**On a Windows machine:**
+**This app is macOS-only** - iMessage database access requires macOS.
 
-```bash
-# Build the executable
-pyinstaller run_analyzer.spec
+### Platform Requirements
 
-# Or use the onefile option:
-pyinstaller --onefile run_analyzer.py
-```
-
-**Output:**
-- `dist/run_analyzer.exe` (Windows executable)
-
-### Cross-Platform Building
-
-**Note:** You cannot build a Windows `.exe` on macOS or vice versa. You need:
-- A Mac to build macOS executables
-- A Windows machine to build Windows executables
-- Or use GitHub Actions for automated builds (see below)
+**Note:** This app is macOS-only. The iMessage database (`chat.db`) is only accessible on macOS systems.
 
 ---
 
@@ -106,20 +87,18 @@ Before distributing:
 
 **For macOS:**
 ```bash
-# Create a zip file
+# The executable is a single file: dist/run_analyzer
+# Create a zip file (optional, but recommended for distribution)
 cd dist
-zip -r imessage_analyzer_macos.zip run_analyzer.app
-# Or if using single file:
 zip imessage_analyzer_macos.zip run_analyzer
+# Or users can download run_analyzer directly
 ```
 
-**For Windows:**
-```bash
-# Create a zip file (on Windows)
-# Right-click run_analyzer.exe → Send to → Compressed (zipped) folder
-# Or use PowerShell:
-Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_windows.zip
-```
+**Note:** Since we're using `onefile=True`, users get a single executable file. They can either:
+- Download the zip and extract it (recommended)
+- Download the executable directly (if GitHub allows direct downloads)
+
+**This app is macOS-only** - iMessage database access requires macOS.
 
 ### Step 3: Create GitHub Release
 
@@ -135,19 +114,23 @@ Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_
      Standalone application for analyzing iMessage conversations.
      
      ## Downloads
-     - **macOS:** [imessage_analyzer_macos.zip](link-to-macos-zip)
-     - **Windows:** [imessage_analyzer_windows.zip](link-to-windows-zip)
+   - **macOS:** [imessage_analyzer_macos.zip](link-to-macos-zip)
      
-     ## Installation
-     1. Download the zip file for your operating system
-     2. Extract the zip file
-     3. Double-click `run_analyzer` (macOS) or `run_analyzer.exe` (Windows)
-     4. Your browser will open automatically to http://localhost:8501
+## Installation
+1. Download the executable:
+   - `run_analyzer` (or `imessage_analyzer_macos.zip` - extract first)
+2. **Double-click the file** - that's it! No installation needed.
+3. Your browser will open automatically to http://localhost:8501
+
+**That's it!** It's a single file - no folders, no installation, just download and run.
+
+**Note:** This app is macOS-only - iMessage database access requires macOS.
      
      ## Requirements
-     - macOS 10.14+ or Windows 10+
+     - macOS 10.14 or later
      - No Python installation required
      - ~500MB disk space
+     - **macOS only** - iMessage database access requires macOS
      ```
 4. **Attach files:** Upload your zip files
 5. Click **"Publish release"**
@@ -182,35 +165,13 @@ jobs:
       - name: Build executable
         run: pyinstaller run_analyzer.spec
       - name: Create zip
-        run: cd dist && zip -r ../imessage_analyzer_macos.zip run_analyzer.app
+        run: cd dist && zip -r ../imessage_analyzer_macos.zip run_analyzer
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: macos-executable
           path: imessage_analyzer_macos.zip
 
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
-          python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt')"
-      - name: Build executable
-        run: pyinstaller run_analyzer.spec
-      - name: Create zip
-        run: Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_windows.zip
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-executable
-          path: imessage_analyzer_windows.zip
 ```
 
 ---
@@ -226,14 +187,11 @@ Add this to your README.md:
 
 1. **Download the latest release:**
    - Go to [Releases](https://github.com/Alanshnir/imessage_analyzer_deployable/releases)
-   - Download the zip file for your operating system:
-     - `imessage_analyzer_macos.zip` for macOS
-     - `imessage_analyzer_windows.zip` for Windows
+   - Download the zip file: `imessage_analyzer_macos.zip`
 
 2. **Extract and run:**
    - Extract the zip file
-   - **macOS:** Double-click `run_analyzer.app`
-   - **Windows:** Double-click `run_analyzer.exe`
+   - Double-click `run_analyzer`
 
 3. **Use the app:**
    - Your browser will open automatically to http://localhost:8501
@@ -241,9 +199,10 @@ Add this to your README.md:
    - Upload your `chat.db` file and start analyzing!
 
 ### Requirements
-- macOS 10.14+ or Windows 10+
+- macOS 10.14 or later
 - ~500MB free disk space
 - No Python installation needed
+- **macOS only** - iMessage database access requires macOS
 ```
 
 ---
@@ -270,22 +229,16 @@ Add this to your README.md:
 
 ## Quick Reference
 
-**Build commands:**
+**Build command:**
 ```bash
-# macOS
+# macOS only
 pyinstaller run_analyzer.spec
-
-# Windows
-pyinstaller run_analyzer.spec
-
-# Single file (alternative)
-pyinstaller --onefile --noconsole run_analyzer.py  # macOS
-pyinstaller --onefile run_analyzer.py  # Windows
 ```
 
-**Output locations:**
-- macOS: `dist/run_analyzer.app` or `dist/run_analyzer`
-- Windows: `dist/run_analyzer.exe`
+**Output location:**
+- `dist/run_analyzer` (single file executable)
 
 **File size:** Expect 300-500MB (normal for Python apps with ML libraries)
+
+**Note:** This app is macOS-only - iMessage database access requires macOS.
 

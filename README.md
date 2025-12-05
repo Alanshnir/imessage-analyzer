@@ -1,6 +1,8 @@
 # iMessage Analyzer
 
-A privacy-first, local-only application for analyzing your iMessage conversations. This tool helps you understand your messaging patterns through six research questions covering topic avoidance, conversation dynamics, sentiment analysis, and behavioral patterns.
+A privacy-first, local-only macOS application for analyzing your iMessage conversations. This tool helps you understand your messaging patterns through six research questions covering topic avoidance, conversation dynamics, sentiment analysis, and behavioral patterns.
+
+**macOS only** - iMessage database access requires macOS.
 
 ## Research Questions
 
@@ -25,15 +27,13 @@ A privacy-first, local-only application for analyzing your iMessage conversation
 ### Download Standalone App
 
 1. **Go to [Releases](https://github.com/Alanshnir/imessage_analyzer_deployable/releases)**
-2. **Download the zip file for your operating system:**
-   - `imessage_analyzer_macos.zip` for macOS
-   - `imessage_analyzer_windows.zip` for Windows
-3. **Extract the zip file**
-4. **Run the app:**
-   - **macOS:** Double-click `run_analyzer.app` (or `run_analyzer` if single file)
-   - **Windows:** Double-click `run_analyzer.exe`
+2. **Download the single executable file:**
+   - `run_analyzer` (or download `imessage_analyzer_macos.zip` and extract)
+3. **Double-click the file** - that's it! No installation needed.
 
 Your browser will open automatically to **http://localhost:8501**
+
+**Note:** This is a single-file executable for macOS. No folders, no installation - just download and run!
 
 ### Upload and Analyze
 
@@ -47,7 +47,7 @@ Your browser will open automatically to **http://localhost:8501**
 7. Explore your messaging patterns!
 
 **Requirements:**
-- macOS 10.14+ or Windows 10+
+- macOS 10.14 or later
 - ~500MB free disk space
 - **No Python installation required** - the app is fully self-contained
 
@@ -58,7 +58,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on building standal
 ## Requirements (For Developers)
 
 - Python 3.10 or higher
-- macOS (for accessing iMessage database)
+- macOS (required - iMessage database is macOS-only)
 - SQLite database file: `chat.db`
 
 ## Installation
@@ -153,8 +153,9 @@ pyinstaller run_analyzer.spec
 ```
 
 The executable will be in:
-- `dist/run_analyzer.app` (macOS) or `dist/run_analyzer` (single file)
-- `dist/run_analyzer.exe` (Windows)
+- `dist/run_analyzer` (single file executable for macOS)
+
+**Note:** The spec file is configured for `onefile=True`, creating a single executable file that users can download and run directly - no folder structure needed!
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete build instructions and GitHub release setup.
 
@@ -292,7 +293,7 @@ imessage_analyzer/
 
 ## Limitations
 
-- Requires macOS to access the iMessage database
+- **macOS only** - iMessage database is only available on macOS
 - Large databases may take time to process
 - Topic modeling quality depends on message volume and diversity
 - Some features may be limited if database schema differs from expected

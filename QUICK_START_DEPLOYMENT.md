@@ -43,24 +43,18 @@ python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nl
 pyinstaller run_analyzer.spec
 ```
 
-**Output:** `dist/run_analyzer.app` (or `dist/run_analyzer` if single file)
+**Output:** `dist/run_analyzer` (single file executable)
 
-### Build for Windows (on Windows)
+### Create zip file for distribution (optional)
 ```bash
-pyinstaller run_analyzer.spec
-```
-
-**Output:** `dist/run_analyzer.exe`
-
-### Create zip files for distribution
-```bash
-# macOS
+# macOS - single file executable
 cd dist
-zip -r ../imessage_analyzer_macos.zip run_analyzer.app
-
-# Windows (PowerShell)
-Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_windows.zip
+zip ../imessage_analyzer_macos.zip run_analyzer
 ```
+
+**Note:** The executable is a single file (no folder structure). Users can download the zip or the executable directly.
+
+**This app is macOS-only** - iMessage database access requires macOS.
 
 ---
 
@@ -72,8 +66,10 @@ Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_
    - **Tag:** `v1.0.0`
    - **Title:** `iMessage Analyzer v1.0.0`
    - **Description:** Copy from DEPLOYMENT.md
-4. **Attach files:** Upload `imessage_analyzer_macos.zip` and `imessage_analyzer_windows.zip`
+4. **Attach files:** Upload `imessage_analyzer_macos.zip`
 5. Click **"Publish release"**
+
+**Note:** This app is macOS-only - iMessage database access requires macOS.
 
 ✅ **Done!** Users can now download your app.
 
@@ -82,10 +78,12 @@ Compress-Archive -Path dist\run_analyzer.exe -DestinationPath imessage_analyzer_
 ## 📋 Checklist
 
 - [ ] Code pushed to GitHub
-- [ ] Executables built and tested
-- [ ] Zip files created
-- [ ] GitHub release created with downloads
-- [ ] README updated with download links
+- [ ] macOS executable built and tested
+- [ ] Zip file created
+- [ ] GitHub release created with download
+- [ ] README updated with download link
+
+**Note:** This app is macOS-only - iMessage database access requires macOS.
 
 ---
 

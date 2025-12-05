@@ -21,21 +21,36 @@ def main():
     
     # Path to app.py - handle both development and PyInstaller bundled mode
     if getattr(sys, 'frozen', False):
-        # Running as PyInstaller bundle
+        # Running as PyInstaller bundle (single-file or folder)
         bundle_dir = sys._MEIPASS
         app_path = os.path.join(bundle_dir, "app.py")
+        # For single-file executables, use Python's streamlit module directly
+        streamlit_cmd = [sys.executable, "-m", "streamlit", "run", app_path]
     else:
         # Running as normal Python script
         app_path = os.path.join(os.path.dirname(__file__), "app.py")
+        # Try streamlit command first, fall back to Python module
+        streamlit_cmd = ["streamlit", "run", app_path]
 
     # Launch Streamlit
     print("Launching Streamlit server...")
     
-    # Use streamlit command directly (works regardless of which Python)
-    proc = subprocess.Popen(
-        ["streamlit", "run", app_path],
-        # stdout and stderr will show in terminal
-    )
+    try:
+        proc = subprocess.Popen(
+            streamlit_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+    except FileNotFoundError:
+        # Fallback: use Python module
+        print("Streamlit command not found, using Python module...")
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "streamlit", "run", app_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
 
     # Wait for Streamlit to be ready (check if port is open)
     print("Waiting for Streamlit to start...")
