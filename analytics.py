@@ -153,7 +153,8 @@ def get_contact_reluctant_topic_stats(
     df_received_with_rt: pd.DataFrame,
     doc_topics: List[np.ndarray],
     top_topic_ids: List[int],
-    topic_threshold: float = 0.3
+    topic_threshold: float = 0.3,
+    df_all: pd.DataFrame = None
 ) -> pd.DataFrame:
     """
     Get statistics about reluctant topics per contact.
@@ -163,9 +164,10 @@ def get_contact_reluctant_topic_stats(
         doc_topics: List of topic distributions per document
         top_topic_ids: List of top reluctant topic IDs
         topic_threshold: Minimum topic probability to count as high prevalence
+        df_all: Optional DataFrame with all messages (sent + received) to compute total message counts
         
     Returns:
-        DataFrame with columns: contact, high_reluctant_topic_count, avg_reluctance_score
+        DataFrame with columns: contact, high_reluctant_topic_count, avg_reluctance_score, total_messages
     """
     df_received_with_rt = df_received_with_rt.reset_index(drop=True)
     
@@ -177,6 +179,13 @@ def get_contact_reluctant_topic_stats(
         return contact_name
     
     df_received_with_rt['contact'] = df_received_with_rt.apply(get_contact_name, axis=1)
+    
+    # Compute total messages per contact (sent + received) if df_all is provided
+    total_messages_per_contact = {}
+    if df_all is not None:
+        df_all = df_all.copy()
+        df_all['contact'] = df_all.apply(get_contact_name, axis=1)
+        total_messages_per_contact = df_all.groupby('contact').size().to_dict()
     
     contact_stats = {}
     
@@ -211,11 +220,13 @@ def get_contact_reluctant_topic_stats(
     results = []
     for contact, stats in contact_stats.items():
         avg_reluctance = stats['total_reluctance'] / stats['message_count'] if stats['message_count'] > 0 else 0.0
+        # Use total messages from df_all if available, otherwise fall back to received count
+        total_msgs = total_messages_per_contact.get(contact, stats['message_count'])
         results.append({
             'contact': contact,
             'high_reluctant_topic_count': stats['high_reluctant_topic_count'],
             'avg_reluctance_score': avg_reluctance,
-            'total_messages': stats['message_count']
+            'total_messages': total_msgs
         })
     
     result_df = pd.DataFrame(results)
@@ -282,31 +293,40 @@ def get_per_contact_topic_mix(
     top_n_contacts: int = 10
 ) -> pd.DataFrame:
     """
-    Get topic distribution per contact (RQ2).
+    Get topic distribution per contact/chat (RQ2).
+    Uses ALL messages (both sent and received) for topic distribution calculation.
     
     Args:
-        df: DataFrame with messages
-        doc_topics: List of topic distributions per document
+        df: DataFrame with messages (all directions)
+        doc_topics: List of topic distributions per document (aligned with df)
         top_n_contacts: Number of top contacts to include
         
     Returns:
         DataFrame with columns: participant, topic_id, proportion
     """
-    # Get top contacts by message count
-    contact_counts = df[df['direction'] == 'in']['participant'].value_counts()
+    # Create a contact identifier that prefers chat_name over participant
+    def get_contact_id(row):
+        contact_id = str(row.get('chat_name', ''))
+        if not contact_id or contact_id == 'Unknown Chat' or pd.isna(contact_id):
+            contact_id = str(row.get('participant', 'Unknown'))
+        return contact_id
+    
+    df_aligned = df.reset_index(drop=True).copy()
+    df_aligned['contact_id'] = df_aligned.apply(get_contact_id, axis=1)
+    
+    # Get top contacts by TOTAL message count (both sent and received)
+    contact_counts = df_aligned['contact_id'].value_counts()
     top_contacts = contact_counts.head(top_n_contacts).index.tolist()
     
     num_topics = len(doc_topics[0]) if doc_topics else 0
     results = []
     
-    # Ensure df and doc_topics are aligned
-    df_aligned = df.reset_index(drop=True)
-    
     for contact in top_contacts:
-        contact_mask = (df_aligned['participant'] == contact) & (df_aligned['direction'] == 'in')
+        # Use ALL messages (both sent and received) for this contact
+        contact_mask = (df_aligned['contact_id'] == contact)
         contact_positions = df_aligned[contact_mask].index.tolist()
         
-        # Average topic distribution for this contact
+        # Average topic distribution for this contact (using all messages)
         contact_topics = np.zeros(num_topics)
         count = 0
         
@@ -320,7 +340,7 @@ def get_per_contact_topic_mix(
             
             for topic_id in range(num_topics):
                 results.append({
-                    'participant': contact,
+                    'participant': contact,  # Using contact_id as participant for display
                     'topic_id': topic_id,
                     'proportion': contact_topics[topic_id]
                 })
@@ -435,7 +455,8 @@ def get_contact_reluctance_proportions(
     doc_topics: List[np.ndarray],
     top_topic_ids: List[int],
     topic_threshold: float = 0.3,
-    min_messages: int = 500
+    min_messages: int = 500,
+    df_all: pd.DataFrame = None
 ) -> pd.DataFrame:
     """
     Get contacts by proportion of high reluctance messages (RQ1 enhancement).
@@ -445,7 +466,8 @@ def get_contact_reluctance_proportions(
         doc_topics: List of topic distributions per document
         top_topic_ids: List of top reluctant topic IDs
         topic_threshold: Minimum topic probability to count as high prevalence
-        min_messages: Minimum total messages to include contact
+        min_messages: Minimum total messages (sent + received) to include contact
+        df_all: Optional DataFrame with all messages (sent + received) to compute total message counts
         
     Returns:
         DataFrame with columns: contact, high_reluctance_proportion, total_messages, high_reluctance_count
@@ -461,6 +483,13 @@ def get_contact_reluctance_proportions(
     
     df_received_with_rt['contact'] = df_received_with_rt.apply(get_contact_name, axis=1)
     
+    # Compute total messages per contact (sent + received) if df_all is provided
+    total_messages_per_contact = {}
+    if df_all is not None:
+        df_all = df_all.copy()
+        df_all['contact'] = df_all.apply(get_contact_name, axis=1)
+        total_messages_per_contact = df_all.groupby('contact').size().to_dict()
+    
     contact_stats = {}
     
     for doc_idx, (_, row) in enumerate(df_received_with_rt.iterrows()):
@@ -469,8 +498,7 @@ def get_contact_reluctance_proportions(
             
             if contact not in contact_stats:
                 contact_stats[contact] = {
-                    'high_reluctance_count': 0,
-                    'total_messages': 0
+                    'high_reluctance_count': 0
                 }
             
             # Check if message has high prevalence of any reluctant topic
@@ -484,18 +512,19 @@ def get_contact_reluctance_proportions(
             
             if has_reluctant_topic:
                 contact_stats[contact]['high_reluctance_count'] += 1
-            
-            contact_stats[contact]['total_messages'] += 1
     
     # Convert to DataFrame and filter
     results = []
     for contact, stats in contact_stats.items():
-        if stats['total_messages'] >= min_messages:
-            proportion = stats['high_reluctance_count'] / stats['total_messages']
+        # Use total messages from df_all if available, otherwise fall back to received count
+        total_msgs = total_messages_per_contact.get(contact, len(df_received_with_rt[df_received_with_rt['contact'] == contact]))
+        
+        if total_msgs >= min_messages:
+            proportion = stats['high_reluctance_count'] / total_msgs if total_msgs > 0 else 0.0
             results.append({
                 'contact': contact,
                 'high_reluctance_proportion': proportion,
-                'total_messages': stats['total_messages'],
+                'total_messages': total_msgs,
                 'high_reluctance_count': stats['high_reluctance_count']
             })
     
@@ -974,3 +1003,170 @@ def rank_reluctant_topics_embedding(
     result_df = result_df.sort_values('final_rank', ascending=False).reset_index(drop=True)
     
     return result_df
+
+
+def compute_per_contact_metrics(
+    df: pd.DataFrame,
+    contact_identifier: str
+) -> dict:
+    """
+    Compute daily metrics for a specific contact.
+    
+    Args:
+        df: Full messages DataFrame
+        contact_identifier: Contact name or participant to filter by
+        
+    Returns:
+        Dictionary with daily metrics DataFrames
+    """
+    # Filter to messages involving this contact
+    contact_df = df[
+        (df['participant'] == contact_identifier) | 
+        (df['chat_name'] == contact_identifier)
+    ].copy()
+    
+    if len(contact_df) == 0:
+        return None
+    
+    # Sort by timestamp
+    contact_df = contact_df.sort_values('timestamp_local')
+    
+    # Daily response times (only for received messages from this contact)
+    received_from_contact = contact_df[contact_df['direction'] == 'in'].copy()
+    
+    if len(received_from_contact) > 0:
+        received_from_contact['date'] = pd.to_datetime(received_from_contact['timestamp_local']).dt.date
+        daily_response = received_from_contact[received_from_contact['got_reply'] & received_from_contact['response_time_min'].notna()].groupby('date').agg({
+            'response_time_min': ['mean', 'count']
+        }).reset_index()
+        daily_response.columns = ['date', 'avg_response_time_min', 'count']
+    else:
+        daily_response = pd.DataFrame(columns=['date', 'avg_response_time_min', 'count'])
+    
+    # Daily text length (all messages in this conversation)
+    contact_df['date'] = pd.to_datetime(contact_df['timestamp_local']).dt.date
+    contact_df['word_count'] = contact_df['text'].fillna('').str.split().str.len()
+    
+    daily_length_all = contact_df.groupby('date').agg({'word_count': ['mean', 'count']}).reset_index()
+    daily_length_all.columns = ['date', 'avg_word_count', 'count']
+    
+    # Daily text length (outbound only)
+    outbound = contact_df[contact_df['direction'] == 'out']
+    if len(outbound) > 0:
+        daily_length_out = outbound.groupby('date').agg({'word_count': ['mean', 'count']}).reset_index()
+        daily_length_out.columns = ['date', 'avg_word_count', 'count']
+    else:
+        daily_length_out = pd.DataFrame(columns=['date', 'avg_word_count', 'count'])
+    
+    # Daily sent count (messages sent to this contact)
+    sent_to_contact = contact_df[contact_df['direction'] == 'out']
+    if len(sent_to_contact) > 0:
+        daily_sent = sent_to_contact.groupby('date').size().reset_index(name='sent_count')
+    else:
+        daily_sent = pd.DataFrame(columns=['date', 'sent_count'])
+    
+    # Daily received count (messages received from this contact)
+    received_from = contact_df[contact_df['direction'] == 'in']
+    if len(received_from) > 0:
+        daily_received = received_from.groupby('date').size().reset_index(name='received_count')
+    else:
+        daily_received = pd.DataFrame(columns=['date', 'received_count'])
+    
+    return {
+        'daily_response': daily_response,
+        'daily_length_all': daily_length_all,
+        'daily_length_out': daily_length_out,
+        'daily_sent': daily_sent,
+        'daily_received': daily_received,
+        'total_messages': len(contact_df)
+    }
+
+
+def compute_per_contact_topics(
+    df: pd.DataFrame,
+    doc_topics: List[np.ndarray],
+    contact_identifier: str,
+    model,
+    dictionary
+) -> dict:
+    """
+    Compute topic distribution for a specific contact.
+    
+    Args:
+        df: Full messages DataFrame with contact info
+        doc_topics: Topic distributions
+        contact_identifier: Contact to analyze
+        model: LDA model
+        dictionary: Gensim dictionary
+        
+    Returns:
+        Dictionary with topic distribution and time series
+    """
+    df = df.reset_index(drop=True)
+    
+    # Filter to this contact
+    contact_mask = (df['participant'] == contact_identifier) | (df['chat_name'] == contact_identifier)
+    contact_indices = df[contact_mask].index.tolist()
+    
+    if len(contact_indices) == 0:
+        return None
+    
+    # Aggregate topic distribution
+    num_topics = len(doc_topics[0]) if doc_topics else 0
+    topic_totals = np.zeros(num_topics)
+    
+    for idx in contact_indices:
+        if idx < len(doc_topics):
+            topic_totals += doc_topics[idx]
+    
+    # Normalize
+    if topic_totals.sum() > 0:
+        topic_probs = topic_totals / topic_totals.sum()
+    else:
+        topic_probs = topic_totals
+    
+    # Create topic distribution DataFrame
+    from topics import get_topic_words
+    topic_dist = []
+    for topic_id in range(num_topics):
+        words = get_topic_words(model, dictionary, topic_id, num_words=5)
+        topic_label = ', '.join([w for w, _ in words])
+        topic_dist.append({
+            'topic_id': topic_id,
+            'topic_label': topic_label,
+            'probability': topic_probs[topic_id]
+        })
+    
+    topic_dist_df = pd.DataFrame(topic_dist).sort_values('probability', ascending=False)
+    
+    # Topic over time for this contact
+    contact_df = df[contact_mask].copy()
+    contact_df['period'] = pd.to_datetime(contact_df['timestamp_local']).dt.to_period('M')
+    
+    time_topic_data = []
+    for period in contact_df['period'].dropna().unique():
+        period_indices = contact_df[contact_df['period'] == period].index.tolist()
+        period_topics = np.zeros(num_topics)
+        count = 0
+        
+        for idx in period_indices:
+            if idx < len(doc_topics):
+                period_topics += doc_topics[idx]
+                count += 1
+        
+        if count > 0:
+            period_topics /= count
+            for topic_id in range(num_topics):
+                time_topic_data.append({
+                    'period': period,
+                    'topic_id': topic_id,
+                    'prevalence': period_topics[topic_id]
+                })
+    
+    time_topic_df = pd.DataFrame(time_topic_data)
+    
+    return {
+        'topic_distribution': topic_dist_df,
+        'topic_over_time': time_topic_df,
+        'total_messages': len(contact_indices)
+    }

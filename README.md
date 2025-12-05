@@ -27,33 +27,42 @@ A privacy-first, local-only application for analyzing your iMessage conversation
 
 ### Download Standalone App
 
-Download the standalone app from the [Releases](https://github.com/Alanshnir/imessage_analyzer_deployable/releases) section.
+1. **Go to [Releases](https://github.com/Alanshnir/imessage_analyzer_deployable/releases)**
+2. **Download the zip file for your operating system:**
+   - `imessage_analyzer_macos.zip` for macOS
+   - `imessage_analyzer_windows.zip` for Windows
+3. **Extract the zip file**
+4. **Run the app:**
+   - **macOS:** Double-click `run_analyzer.app` (or `run_analyzer` if single file)
+   - **Windows:** Double-click `run_analyzer.exe`
 
-### Run the App
-
-Double-click the file:
-- `run_analyzer` on macOS
-- `run_analyzer.exe` on Windows
-
-Your browser will open automatically to:
-**http://localhost:8501**
+Your browser will open automatically to **http://localhost:8501**
 
 ### Upload and Analyze
 
-1. Accept the consent prompt
-2. Upload your `chat.db` file (found at `~/Library/Messages/chat.db`)
+1. **⚠️ IMPORTANT:** Close the Messages app before uploading (Cmd+Q on Mac)
+2. Accept the consent prompt
+3. **💡 Tip:** Adjust settings in the left-hand panel menu before loading your file
+4. Upload your `chat.db` file (found at `~/Library/Messages/chat.db`)
    - Press **Cmd+Shift+G** in Finder and type `~/Library/Messages` to locate it
-3. Configure analysis settings in the sidebar
-4. Run any of the 9 research questions
-5. Explore your messaging patterns!
+5. Configure analysis settings in the sidebar
+6. Run any of the research questions
+7. Explore your messaging patterns!
 
-**No Python installation required** - the app is fully self-contained.
+**Requirements:**
+- macOS 10.14+ or Windows 10+
+- ~500MB free disk space
+- **No Python installation required** - the app is fully self-contained
+
+### For Developers: Building Your Own Executable
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on building standalone executables.
 
 ## Requirements (For Developers)
 
 - Python 3.10 or higher
 - macOS (for accessing iMessage database)
-- SQLite database files: `chat.db` (and optionally `chat.db-wal`, `chat.db-shm`)
+- SQLite database file: `chat.db`
 
 ## Installation
 
@@ -97,11 +106,7 @@ On macOS, your iMessage database is located at:
 ~/Library/Messages/chat.db
 ```
 
-You may also find:
-- `chat.db-wal` (Write-Ahead Log)
-- `chat.db-shm` (Shared Memory file)
-
-**Note**: You may need to temporarily disable iMessage or close the Messages app to copy these files, as they may be locked while in use.
+**⚠️ IMPORTANT**: You **must close the Messages app** before uploading your chat.db file! The database file is locked while Messages is running and cannot be read. Quit Messages from the menu bar (Messages → Quit Messages) or press Cmd+Q.
 
 ## Usage
 
@@ -130,7 +135,7 @@ streamlit run viewer.py
    - Option to show raw participant identifiers
    - Export filtered messages to CSV
 
-**Note**: Both apps are configured to accept files up to 2GB. If your file is larger, you may need to increase the limit in `.streamlit/config.toml`
+**Note**: Both apps are configured to accept files up to 5GB. If your file is larger, you may need to increase the limit in `.streamlit/config.toml`
 
 ## Building a Standalone Executable
 
@@ -151,7 +156,7 @@ imessage_analyzer/
 ├── app.py                    # Streamlit main analyzer application
 ├── run_analyzer.py           # Launcher script for standalone builds
 ├── viewer.py                 # Simple message viewer app
-├── data_loader.py            # Database loading, WAL merging, SQL queries
+├── data_loader.py            # Database loading, SQL queries
 ├── preprocess.py             # Text cleaning and preprocessing
 ├── topics.py                 # Topic modeling with Gensim/MALLET
 ├── responses.py              # Response time calculations
@@ -169,8 +174,7 @@ imessage_analyzer/
 ## How It Works
 
 ### Data Loading
-- Handles both `chat.db` alone and with WAL/SHM files
-- Automatically merges WAL files into a temporary database
+- Loads `chat.db` file directly
 - Defensive SQL queries that adapt to available schema columns
 - Converts Apple timestamps (seconds or nanoseconds since 2001-01-01)
 
@@ -246,7 +250,6 @@ imessage_analyzer/
 - **Local Processing**: All analysis happens on your device
 - **De-identification**: Participant identifiers are pseudonymized by default
 - **No Network Calls**: The app works completely offline
-- **Temporary Files**: WAL-merged databases are stored temporarily and can be deleted via the UI
 
 ## Troubleshooting
 

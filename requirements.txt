@@ -8,6 +8,7 @@ emoji>=2.8.0
 plotly>=5.17.0
 matplotlib>=3.7.0
 biplist>=1.0.0
+vaderSentiment>=3.3.2
 
 # Optional: OpenAI for RQ9 chatbot
 # If you want to use RQ9, install: pip install openai

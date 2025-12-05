@@ -22,6 +22,7 @@ wheels/
 
 # PyInstaller
 *.spec
+!run_analyzer.spec  # Keep our spec file for building executables
 build/
 dist/
 

@@ -529,14 +529,18 @@ def plot_daily_text_length(
 
 def plot_daily_sent_count(
     daily_df: pd.DataFrame,
-    use_plotly: bool = True
+    use_plotly: bool = True,
+    title: str = "Number of Texts Sent Per Day Over Time",
+    yaxis_label: str = "Number of Messages Sent"
 ):
     """
-    Plot number of texts sent out per day over time.
+    Plot number of texts sent/received per day over time.
     
     Args:
-        daily_df: DataFrame from compute_daily_sent_count with columns: date, sent_count
+        daily_df: DataFrame with columns: date, sent_count
         use_plotly: Whether to use plotly
+        title: Plot title (customizable)
+        yaxis_label: Y-axis label (customizable)
         
     Returns:
         Plotly figure or matplotlib figure
@@ -552,13 +556,13 @@ def plot_daily_sent_count(
         fig.add_trace(go.Bar(
             x=daily_df['date'],
             y=daily_df['sent_count'],
-            name='Messages Sent',
-            hovertemplate='Date: %{x}<br>Messages Sent: %{y}<extra></extra>'
+            name=yaxis_label,
+            hovertemplate=f'Date: %{{x}}<br>{yaxis_label}: %{{y}}<extra></extra>'
         ))
         fig.update_layout(
-            title="Number of Texts Sent Per Day Over Time",
+            title=title,
             xaxis_title="Date",
-            yaxis_title="Number of Messages Sent",
+            yaxis_title=yaxis_label,
             hovermode='x unified',
             height=400
         )
@@ -568,8 +572,8 @@ def plot_daily_sent_count(
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.bar(daily_df['date'], daily_df['sent_count'], width=1.0, alpha=0.7)
         ax.set_xlabel("Date")
-        ax.set_ylabel("Number of Messages Sent")
-        ax.set_title("Number of Texts Sent Per Day Over Time")
+        ax.set_ylabel(yaxis_label)
+        ax.set_title(title)
         plt.xticks(rotation=45)
         plt.grid(True, alpha=0.3, axis='y')
         plt.tight_layout()
@@ -1184,5 +1188,474 @@ def plot_reluctant_embedding_topics(df: pd.DataFrame, top_n: int = 15, use_plotl
         ax.set_title("Fine-Grained Topics You Tend Not to Engage With (Embedding-Based)")
         ax.set_xticks(range(len(plot_df)))
         ax.set_xticklabels([f"T{tid}" for tid in plot_df['topic_id']], rotation=45, ha='right')
+        plt.tight_layout()
+        return fig
+
+
+def plot_daily_total_count(df: pd.DataFrame, use_plotly: bool = True):
+    """Plot total messages (inbound + outbound) per day."""
+    if df is None or len(df) == 0:
+        return None
+    
+    if use_plotly and PLOTLY_AVAILABLE:
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df['date'],
+            y=df['total_count'],
+            mode='lines+markers',
+            name='Total Messages',
+            line=dict(color='royalblue', width=2),
+            marker=dict(size=4)
+        ))
+        
+        fig.update_layout(
+            title="Total Messages Per Day (Inbound + Outbound)",
+            xaxis_title="Date",
+            yaxis_title="Total Messages",
+            hovermode='x unified',
+            height=400
+        )
+        return fig
+    else:
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(df['date'], df['total_count'], marker='o', linewidth=2, color='royalblue')
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Total Messages")
+        ax.set_title("Total Messages Per Day (Inbound + Outbound)")
+        ax.grid(True, alpha=0.3)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        return fig
+
+
+# ============================================================================
+# RQ5: Sentiment Analysis Visualizations
+# ============================================================================
+
+def plot_sentiment_distribution(summary: dict, use_plotly: bool = True):
+    """
+    Plot sentiment distribution as pie/bar charts.
+    
+    Args:
+        summary: Dictionary from global_sentiment_summary()
+        use_plotly: Whether to use plotly (True) or matplotlib (False)
+    """
+    if use_plotly and PLOTLY_AVAILABLE:
+        from plotly.subplots import make_subplots
+        
+        # Create subplots: overall, sent, received
+        specs = [[{"type": "pie"}, {"type": "pie"}, {"type": "pie"}]]
+        fig = make_subplots(
+            rows=1, cols=3,
+            subplot_titles=("Overall", "Sent Messages", "Received Messages"),
+            specs=specs
+        )
+        
+        colors = {'positive': '#2ecc71', 'negative': '#e74c3c', 'neutral': '#95a5a6'}
+        
+        # Overall
+        if 'overall' in summary:
+            fig.add_trace(go.Pie(
+                labels=['Positive', 'Negative', 'Neutral'],
+                values=[
+                    summary['overall']['pct_positive'],
+                    summary['overall']['pct_negative'],
+                    summary['overall']['pct_neutral']
+                ],
+                marker=dict(colors=[colors['positive'], colors['negative'], colors['neutral']]),
+                name="Overall"
+            ), row=1, col=1)
+        
+        # Sent (out)
+        if 'out' in summary:
+            fig.add_trace(go.Pie(
+                labels=['Positive', 'Negative', 'Neutral'],
+                values=[
+                    summary['out']['pct_positive'],
+                    summary['out']['pct_negative'],
+                    summary['out']['pct_neutral']
+                ],
+                marker=dict(colors=[colors['positive'], colors['negative'], colors['neutral']]),
+                name="Sent"
+            ), row=1, col=2)
+        
+        # Received (in)
+        if 'in' in summary:
+            fig.add_trace(go.Pie(
+                labels=['Positive', 'Negative', 'Neutral'],
+                values=[
+                    summary['in']['pct_positive'],
+                    summary['in']['pct_negative'],
+                    summary['in']['pct_neutral']
+                ],
+                marker=dict(colors=[colors['positive'], colors['negative'], colors['neutral']]),
+                name="Received"
+            ), row=1, col=3)
+        
+        fig.update_layout(
+            title="Sentiment Distribution",
+            height=400,
+            showlegend=True
+        )
+        
+        return fig
+    else:
+        # Matplotlib fallback
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        colors_list = ['#2ecc71', '#e74c3c', '#95a5a6']
+        
+        for idx, (key, title) in enumerate([('overall', 'Overall'), 
+                                             ('out', 'Sent Messages'), 
+                                             ('in', 'Received Messages')]):
+            if key in summary:
+                axes[idx].pie(
+                    [summary[key]['pct_positive'], 
+                     summary[key]['pct_negative'], 
+                     summary[key]['pct_neutral']],
+                    labels=['Positive', 'Negative', 'Neutral'],
+                    colors=colors_list,
+                    autopct='%1.1f%%'
+                )
+                axes[idx].set_title(title)
+        
+        plt.tight_layout()
+        return fig
+
+
+def plot_sentiment_over_time(time_df: pd.DataFrame, use_plotly: bool = True):
+    """
+    Plot sentiment trends over time.
+    
+    Args:
+        time_df: DataFrame from sentiment_over_time()
+        use_plotly: Whether to use plotly (True) or matplotlib (False)
+    """
+    if len(time_df) == 0:
+        return None
+    
+    if use_plotly and PLOTLY_AVAILABLE:
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=("Average Sentiment Score Over Time", 
+                           "Sentiment Distribution Over Time"),
+            vertical_spacing=0.15
+        )
+        
+        # Average sentiment score
+        fig.add_trace(go.Scatter(
+            x=time_df['period'],
+            y=time_df['avg_sentiment'],
+            mode='lines+markers',
+            name='Overall',
+            line=dict(color='purple', width=2),
+            marker=dict(size=6)
+        ), row=1, col=1)
+        
+        # Add sent/received if available
+        if 'avg_sentiment_out' in time_df.columns:
+            fig.add_trace(go.Scatter(
+                x=time_df['period'],
+                y=time_df['avg_sentiment_out'],
+                mode='lines+markers',
+                name='Sent',
+                line=dict(color='blue', width=2, dash='dash'),
+                marker=dict(size=4)
+            ), row=1, col=1)
+        
+        if 'avg_sentiment_in' in time_df.columns:
+            fig.add_trace(go.Scatter(
+                x=time_df['period'],
+                y=time_df['avg_sentiment_in'],
+                mode='lines+markers',
+                name='Received',
+                line=dict(color='orange', width=2, dash='dash'),
+                marker=dict(size=4)
+            ), row=1, col=1)
+        
+        # Sentiment distribution percentages
+        fig.add_trace(go.Scatter(
+            x=time_df['period'],
+            y=time_df['pct_positive'],
+            mode='lines',
+            name='% Positive',
+            line=dict(color='#2ecc71', width=2),
+            stackgroup='one'
+        ), row=2, col=1)
+        
+        fig.add_trace(go.Scatter(
+            x=time_df['period'],
+            y=time_df['pct_neutral'],
+            mode='lines',
+            name='% Neutral',
+            line=dict(color='#95a5a6', width=2),
+            stackgroup='one'
+        ), row=2, col=1)
+        
+        fig.add_trace(go.Scatter(
+            x=time_df['period'],
+            y=time_df['pct_negative'],
+            mode='lines',
+            name='% Negative',
+            line=dict(color='#e74c3c', width=2),
+            stackgroup='one'
+        ), row=2, col=1)
+        
+        fig.update_xaxes(title_text="Time", row=2, col=1)
+        fig.update_yaxes(title_text="Sentiment Score", row=1, col=1)
+        fig.update_yaxes(title_text="Percentage", row=2, col=1)
+        
+        fig.update_layout(
+            height=800,
+            hovermode='x unified',
+            showlegend=True
+        )
+        
+        return fig
+    else:
+        # Matplotlib fallback
+        fig, axes = plt.subplots(2, 1, figsize=(12, 10))
+        
+        # Average sentiment
+        axes[0].plot(time_df['period'], time_df['avg_sentiment'], 
+                    marker='o', linewidth=2, label='Overall', color='purple')
+        
+        if 'avg_sentiment_out' in time_df.columns:
+            axes[0].plot(time_df['period'], time_df['avg_sentiment_out'], 
+                        marker='s', linewidth=2, linestyle='--', label='Sent', color='blue')
+        
+        if 'avg_sentiment_in' in time_df.columns:
+            axes[0].plot(time_df['period'], time_df['avg_sentiment_in'], 
+                        marker='^', linewidth=2, linestyle='--', label='Received', color='orange')
+        
+        axes[0].set_ylabel('Sentiment Score')
+        axes[0].set_title('Average Sentiment Score Over Time')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
+        axes[0].axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+        
+        # Sentiment distribution
+        axes[1].fill_between(time_df['period'], 0, time_df['pct_positive'], 
+                            label='Positive', color='#2ecc71', alpha=0.7)
+        axes[1].fill_between(time_df['period'], time_df['pct_positive'], 
+                            time_df['pct_positive'] + time_df['pct_neutral'],
+                            label='Neutral', color='#95a5a6', alpha=0.7)
+        axes[1].fill_between(time_df['period'], 
+                            time_df['pct_positive'] + time_df['pct_neutral'],
+                            100,
+                            label='Negative', color='#e74c3c', alpha=0.7)
+        
+        axes[1].set_xlabel('Time')
+        axes[1].set_ylabel('Percentage')
+        axes[1].set_title('Sentiment Distribution Over Time')
+        axes[1].legend()
+        axes[1].set_ylim(0, 100)
+        
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        return fig
+
+
+def plot_chat_sentiment_over_time(time_df: pd.DataFrame, chat_name: str, use_plotly: bool = True):
+    """
+    Plot sentiment over time for a specific chat.
+    
+    Args:
+        time_df: DataFrame from per_chat_sentiment()['time_series']
+        chat_name: Name of the chat for title
+        use_plotly: Whether to use plotly (True) or matplotlib (False)
+    """
+    if len(time_df) == 0:
+        return None
+    
+    if use_plotly and PLOTLY_AVAILABLE:
+        fig = go.Figure()
+        
+        # Overall sentiment
+        fig.add_trace(go.Scatter(
+            x=time_df['period'],
+            y=time_df['avg_sentiment'],
+            mode='lines+markers',
+            name='Overall',
+            line=dict(color='purple', width=3),
+            marker=dict(size=6)
+        ))
+        
+        # Sent/received if available
+        if 'avg_sentiment_out' in time_df.columns:
+            # Filter out NaN values for sent
+            sent_mask = ~time_df['avg_sentiment_out'].isna()
+            fig.add_trace(go.Scatter(
+                x=time_df.loc[sent_mask, 'period'],
+                y=time_df.loc[sent_mask, 'avg_sentiment_out'],
+                mode='lines+markers',
+                name='Sent',
+                line=dict(color='blue', width=2, dash='dash'),
+                marker=dict(size=4)
+            ))
+        
+        if 'avg_sentiment_in' in time_df.columns:
+            # Filter out NaN values for received
+            recv_mask = ~time_df['avg_sentiment_in'].isna()
+            fig.add_trace(go.Scatter(
+                x=time_df.loc[recv_mask, 'period'],
+                y=time_df.loc[recv_mask, 'avg_sentiment_in'],
+                mode='lines+markers',
+                name='Received',
+                line=dict(color='orange', width=2, dash='dash'),
+                marker=dict(size=4)
+            ))
+        
+        fig.add_hline(y=0, line=dict(color='gray', dash='dot', width=1), 
+                     annotation_text="Neutral")
+        
+        fig.update_layout(
+            title=f"Sentiment Over Time: {chat_name}",
+            xaxis_title="Time",
+            yaxis_title="Sentiment Score",
+            hovermode='x unified',
+            height=400,
+            showlegend=True
+        )
+        
+        return fig
+    else:
+        # Matplotlib fallback
+        fig, ax = plt.subplots(figsize=(12, 5))
+        
+        ax.plot(time_df['period'], time_df['avg_sentiment'], 
+               marker='o', linewidth=2, label='Overall', color='purple')
+        
+        if 'avg_sentiment_out' in time_df.columns:
+            sent_mask = ~time_df['avg_sentiment_out'].isna()
+            ax.plot(time_df.loc[sent_mask, 'period'], 
+                   time_df.loc[sent_mask, 'avg_sentiment_out'], 
+                   marker='s', linewidth=2, linestyle='--', label='Sent', color='blue')
+        
+        if 'avg_sentiment_in' in time_df.columns:
+            recv_mask = ~time_df['avg_sentiment_in'].isna()
+            ax.plot(time_df.loc[recv_mask, 'period'], 
+                   time_df.loc[recv_mask, 'avg_sentiment_in'], 
+                   marker='^', linewidth=2, linestyle='--', label='Received', color='orange')
+        
+        ax.axhline(y=0, color='gray', linestyle=':', alpha=0.5, label='Neutral')
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Sentiment Score')
+        ax.set_title(f'Sentiment Over Time: {chat_name}')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        return fig
+
+
+def plot_top_contacts_by_positive_sentiment(
+    contact_stats: pd.DataFrame,
+    metric_type: str = 'overall',
+    top_n: int = 10,
+    use_plotly: bool = True
+):
+    """
+    Plot top contacts by proportion of positive sentiment messages.
+    
+    Args:
+        contact_stats: DataFrame from per_contact_sentiment_stats()
+        metric_type: 'overall', 'sent', or 'received'
+        top_n: Number of top contacts to show
+        use_plotly: Whether to use plotly (True) or matplotlib (False)
+    """
+    if len(contact_stats) == 0:
+        return None
+    
+    # Determine which column to use
+    if metric_type == 'sent':
+        pct_col = 'pct_positive_sent'
+        total_col = 'sent_total'
+        title = "Top Contacts by Positive Sentiment (Sent Messages)"
+    elif metric_type == 'received':
+        pct_col = 'pct_positive_received'
+        total_col = 'received_total'
+        title = "Top Contacts by Positive Sentiment (Received Messages)"
+    else:  # overall
+        pct_col = 'pct_positive_overall'
+        total_col = 'total_messages'
+        title = "Top Contacts by Positive Sentiment (All Messages)"
+    
+    # Sort by positive percentage and take top N
+    plot_df = contact_stats.copy()
+    plot_df = plot_df.sort_values(pct_col, ascending=False).head(top_n).reset_index(drop=True)
+    
+    # Create truncated labels for display (first 8 chars + '...' if longer)
+    def truncate_label(label: str, max_len: int = 8) -> str:
+        if len(str(label)) > max_len:
+            return str(label)[:max_len] + '...'
+        return str(label)
+    
+    truncated_labels = [truncate_label(str(c)) for c in plot_df['contact']]
+    full_labels = [str(c) for c in plot_df['contact']]
+    
+    # Use categorical positions for x-axis
+    x_positions = list(range(len(plot_df)))
+    
+    if use_plotly and PLOTLY_AVAILABLE:
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            x=x_positions,
+            y=plot_df[pct_col],
+            marker=dict(
+                color=plot_df[pct_col],
+                colorscale='Greens',
+                showscale=True,
+                colorbar=dict(title="% Positive")
+            ),
+            text=[f"{pct:.1f}%" for pct in plot_df[pct_col]],
+            textposition='auto',
+            hovertemplate=(
+                '<b>%{customdata[0]}</b><br>' +
+                'Positive: %{y:.1f}%<br>' +
+                f'Total messages: %{{customdata[1]}}<br>' +
+                '<extra></extra>'
+            ),
+            customdata=list(zip(full_labels, plot_df[total_col]))
+        ))
+        
+        fig.update_layout(
+            title=title,
+            xaxis_title="Contact",
+            yaxis_title="% Positive Sentiment",
+            height=400,
+            showlegend=False,
+            yaxis=dict(range=[0, 100]),
+            xaxis={
+                'tickmode': 'array',
+                'tickvals': x_positions,
+                'ticktext': truncated_labels,
+                'tickangle': -45
+            }
+        )
+        
+        return fig
+    else:
+        # Matplotlib fallback
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        bars = ax.bar(x_positions, plot_df[pct_col], color='#2ecc71', alpha=0.7, width=0.6)
+        
+        # Add value labels on top of bars
+        for i, (idx, row) in enumerate(plot_df.iterrows()):
+            ax.text(i, row[pct_col] + 1, f"{row[pct_col]:.1f}%", 
+                   ha='center', va='bottom', fontsize=9)
+        
+        ax.set_xlabel('Contact')
+        ax.set_ylabel('% Positive Sentiment')
+        ax.set_title(title)
+        ax.set_ylim(0, 100)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(truncated_labels, rotation=-45, ha='left')
+        ax.grid(axis='y', alpha=0.3)
+        
         plt.tight_layout()
         return fig

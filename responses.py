@@ -419,3 +419,28 @@ def compute_daily_sent_count(df: pd.DataFrame) -> pd.DataFrame:
     
     return daily_counts
 
+
+def compute_daily_total_count(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute total number of texts (inbound + outbound) per day.
+    
+    Args:
+        df: DataFrame with timestamp_local column
+        
+    Returns:
+        DataFrame with columns: date, total_count
+    """
+    if len(df) == 0 or 'timestamp_local' not in df.columns:
+        return pd.DataFrame(columns=['date', 'total_count'])
+    
+    df_copy = df.copy()
+    
+    # Extract date from timestamp
+    df_copy['date'] = pd.to_datetime(df_copy['timestamp_local']).dt.date
+    
+    # Count all messages per day
+    daily_counts = df_copy.groupby('date').size().reset_index(name='total_count')
+    daily_counts = daily_counts.sort_values('date')
+    
+    return daily_counts
+
