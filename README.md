@@ -1,25 +1,22 @@
 # iMessage Analyzer
 
-A privacy-first, local-only application for analyzing your iMessage conversations. This tool helps you understand your messaging patterns through nine research questions covering topic avoidance, conversation dynamics, and behavioral patterns.
+A privacy-first, local-only application for analyzing your iMessage conversations. This tool helps you understand your messaging patterns through six research questions covering topic avoidance, conversation dynamics, sentiment analysis, and behavioral patterns.
 
 ## Research Questions
 
-1. **RQ1**: Topics you tend not to engage with (broad LDA topics)
-2. **RQ2**: Most commonly discussed topics
-3. **RQ3**: Group vs one-to-one responsiveness
-4. **RQ4**: Conversation starter topics (fine-grained)
-5. **RQ5**: Conversation ender topics (fine-grained)
-6. **RQ6**: Topics by closeness (close contacts vs acquaintances)
-7. **RQ7**: Topics by time of day
-8. **RQ8**: Fine-grained avoided topics (TF-IDF + K-Means)
-9. **RQ9**: GPT-powered chatbot for querying your behavior
+1. **RQ1**: Topics you tend not to engage with (LDA topic modeling)
+2. **RQ2**: Most commonly discussed topics (topic distribution analysis)
+3. **RQ3**: Group vs one-to-one responsiveness (reply rate comparison)
+4. **RQ4**: Conversation starter topics (topics that initiate conversations)
+5. **RQ5**: Sentiment analysis (positive/negative/neutral message analysis)
+6. **RQ6**: GPT-powered chatbot for querying your behavior (AI-powered insights)
 
 ## Features
 
 - 🔒 **Privacy-first**: All processing happens locally on your device. No data is sent over the network.
 - 📊 **Comprehensive Analysis**: Topic modeling, response time analysis, and engagement metrics.
 - 🎨 **Interactive Visualizations**: Beautiful charts and graphs using Plotly.
-- 📁 **Export Reports**: Generate self-contained HTML reports and CSV exports.
+- 📁 **Export Data**: Export unprocessed text messages as CSV for custom analysis.
 - 🔐 **De-identification**: Automatically pseudonymizes participants by default.
 - 🤖 **AI Chatbot**: Ask questions about your texting patterns using GPT (optional, requires API key)
 
@@ -135,19 +132,31 @@ streamlit run viewer.py
    - Option to show raw participant identifiers
    - Export filtered messages to CSV
 
-**Note**: Both apps are configured to accept files up to 5GB. If your file is larger, you may need to increase the limit in `.streamlit/config.toml`
+**Note**: The app is configured to accept files up to 5GB. If your file is larger, you may need to increase the limit in `.streamlit/config.toml`
+
+### Key Features
+
+- **Unified Topic Model**: RQ1, RQ2, and RQ4 all use the same topics learned from ALL your messages (sent + received), ensuring consistency across analyses
+- **Per-Contact Analysis**: Explore individual contact behavior, topic distributions, and sentiment patterns
+- **Exploratory Data Analysis**: Response times, text lengths, message counts, and daily trends
+- **Customizable Settings**: Adjust topic count, preprocessing options, response time thresholds, and more
 
 ## Building a Standalone Executable
 
-Want to distribute the app as a single executable? See [build_instructions.md](build_instructions.md) for details.
+Want to distribute the app as a single executable? See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 
 **Quick build:**
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --noconsole run_analyzer.py
+python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt')"
+pyinstaller run_analyzer.spec
 ```
 
-The executable will be in `dist/run_analyzer` (or `dist/run_analyzer.exe` on Windows).
+The executable will be in:
+- `dist/run_analyzer.app` (macOS) or `dist/run_analyzer` (single file)
+- `dist/run_analyzer.exe` (Windows)
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete build instructions and GitHub release setup.
 
 ## Project Structure
 
@@ -155,19 +164,22 @@ The executable will be in `dist/run_analyzer` (or `dist/run_analyzer.exe` on Win
 imessage_analyzer/
 ├── app.py                    # Streamlit main analyzer application
 ├── run_analyzer.py           # Launcher script for standalone builds
-├── viewer.py                 # Simple message viewer app
-├── data_loader.py            # Database loading, SQL queries
+├── run_analyzer.spec         # PyInstaller configuration
+├── viewer.py                 # Simple message viewer app (optional)
+├── data_loader.py            # Database loading, SQL queries, attributedBody extraction
 ├── preprocess.py             # Text cleaning and preprocessing
 ├── topics.py                 # Topic modeling with Gensim/MALLET
-├── responses.py              # Response time calculations
-├── analytics.py              # RQ1-8 aggregation logic
-├── viz.py                    # Plotting and visualization
-├── chatbot.py                # RQ9 GPT-powered chatbot
-├── simple_topics.py          # RQ8 TF-IDF topic modeling
-├── embedding_topics.py       # Optional BERT-based topics
+├── responses.py              # Response time calculations, reluctance scores
+├── analytics.py              # RQ1-6 aggregation logic
+├── viz.py                    # Plotting and visualization (Plotly/Matplotlib)
+├── chatbot.py                # RQ6 GPT-powered chatbot
+├── sentiment.py              # RQ5 VADER sentiment analysis
 ├── utils.py                  # Utility functions (hashing, config)
 ├── requirements.txt          # Python dependencies
-├── build_instructions.md     # PyInstaller build guide
+├── DEPLOYMENT.md             # Deployment and build guide
+├── QUICK_START_DEPLOYMENT.md # Quick deployment reference
+├── deploy.sh                 # Automated deployment script
+├── .streamlit/config.toml    # Streamlit configuration (5GB upload limit)
 └── README.md                 # This file
 ```
 
@@ -181,75 +193,70 @@ imessage_analyzer/
 ### Topic Modeling
 - Uses Latent Dirichlet Allocation (LDA) via Gensim
 - Optional MALLET integration for improved results
-- Configurable preprocessing (stopwords, stemming, lemmatization)
+- **Unified Model**: RQ1, RQ2, and RQ4 all use the same topic model trained on ALL messages (sent + received)
+- Configurable preprocessing (automatic: lowercase, emoji removal; optional: stopwords, stemming, lemmatization)
+- User-configurable number of topics (1-30, default: 30)
 - Computes topic coherence scores
 
 ### Response Time Analysis
 - Tracks time from received message to your next sent message
+- Supports Tapbacks and threaded replies (user-configurable)
 - Filters outliers and configurable maximum gap windows
-- Computes reluctance scores for engagement analysis
+- Computes reluctance scores (0-1 scale) for engagement analysis
+- Optimized for large datasets (vectorized operations, caching)
 
 ### Research Questions
 
 **RQ1: Topics You Tend Not to Engage With**
-- Identifies topics in received messages using LDA
-- Weights topics by response time/reluctance
+- Uses LDA topic modeling on ALL aggregated messages (sent + received)
+- Identifies topics in received messages with high reluctance scores
+- Weights topics by response time and reply likelihood
 - Ranks topics by engagement reluctance
-- Supports 1-30 topics (user-configurable)
+- Supports 1-30 topics (user-configurable, default: 30)
+- Includes per-contact analysis and high reluctance message examples
 
 **RQ2: Most Commonly Discussed Topics**
+- Uses the SAME topics from RQ1 (learned from all aggregated messages)
 - Analyzes topic distribution across all conversations
 - Shows topic prevalence per contact
 - Tracks topic trends over time
-- Supports 1-30 topics (user-configurable)
+- Per-contact topic analysis (pie charts and time series)
+- Supports 1-30 topics (user-configurable, default: 30)
 
 **RQ3: Group vs One-to-One Responsiveness**
-- Compares reply rates and response times
+- Compares reply rates and response times between group and one-on-one chats
 - Analyzes by group size categories
-- Identifies contacts you respond to more in groups
+- Identifies contacts you respond to more in groups vs individually
 - Filterable by minimum message count
+- Per-contact group vs one-on-one analysis
 
 **RQ4: Conversation Starter Topics**
-- Uses fine-grained 50-topic model
+- Uses the SAME topics from RQ1 (learned from all aggregated messages)
 - Identifies topics that start conversations
-- Measures reply likelihood and response speed
-- Tracks session positioning
+- Measures reply likelihood, response speed, and session positioning
+- Ranks topics by starter score (combination of reply rate, speed, and position)
 
-**RQ5: Conversation Ender Topics**
-- Uses fine-grained 50-topic model
-- Identifies topics that end conversations
-- Measures no-reply rates and long response times
-- Tracks conversation termination patterns
+**RQ5: Sentiment Analysis**
+- Uses VADER sentiment analysis on raw, untokenized text
+- Analyzes positive/negative/neutral sentiment across all messages
+- Shows sentiment trends over time
+- Per-chat sentiment explorer
+- Top contacts by positive sentiment proportion
+- Separate analysis for sent vs received messages
 
-**RQ6: Topics by Closeness**
-- Compares close contacts vs acquaintances
-- Uses odds ratios to identify distinctive topics
-- User-configurable closeness thresholds
-- Fine-grained 50-topic analysis
-
-**RQ7: Topics by Time of Day**
-- Analyzes topics by time period (morning/afternoon/evening/night)
-- Heatmap visualization
-- Fine-grained 50-topic analysis
-- Shows when different topics are discussed
-
-**RQ8: Fine-Grained Avoided Topics**
-- Uses TF-IDF + K-Means clustering
-- 15-50 topics (user-configurable)
-- More granular than RQ1
-- No heavy dependencies required
-
-**RQ9: GPT-Powered Chatbot**
+**RQ6: GPT-Powered Chatbot**
 - Ask questions about your texting patterns in plain English
-- Uses aggregated statistics only (privacy-first)
-- Requires OpenAI API key (user-provided)
-- No raw messages sent to API
+- Uses aggregated statistics from RQ1-5 only (privacy-first)
+- Requires OpenAI API key (user-provided, stored in session state)
+- No raw messages, phone numbers, or PII sent to API
+- Viewable/editable system context for transparency
 
 ## Privacy & Security
 
 - **Local Processing**: All analysis happens on your device
-- **De-identification**: Participant identifiers are pseudonymized by default
-- **No Network Calls**: The app works completely offline
+- **De-identification**: Participant identifiers and chat names are pseudonymized by default (user-configurable)
+- **No Network Calls**: The app works completely offline (except optional RQ6 chatbot which requires API key)
+- **Privacy-First Chatbot**: RQ6 chatbot only sends aggregated statistics, never raw messages or PII
 
 ## Troubleshooting
 
