@@ -39,6 +39,12 @@ A privacy-first, local-only macOS application for analyzing your iMessage conver
    ```
 
 3. **Run the app:**
+   
+   **Option A: Double-click launcher (Easiest)**
+   - Double-click `Launch iMessage Analyzer.command` in Finder
+   - Your browser will open automatically
+   
+   **Option B: Terminal**
    ```bash
    streamlit run app.py
    ```

@@ -312,7 +312,7 @@ def main():
             outlier_percentile = 99.0
         
         st.subheader("Privacy")
-        deidentify = st.checkbox("De-identify Participants", value=True)
+        deidentify = st.checkbox("De-identify Participants", value=False)
     
     # Consent and file upload section
     st.header("📁 Upload Database Files")
@@ -1813,8 +1813,8 @@ def main():
             if not has_results:
                 st.warning("⚠️ Run at least one RQ analysis (RQ1-5) before using the chatbot.")
             else:
-                # Get deidentify setting (default to True if not set)
-                deidentify_for_chatbot = st.session_state.get('deidentify', True)
+                # Get deidentify setting (default to False if not set)
+                deidentify_for_chatbot = st.session_state.get('deidentify', False)
                 
                 # Build behavior summary (rebuild on each run to capture latest results)
                 behavior_summary = build_behavior_summary(rq_results, deidentify=deidentify_for_chatbot)

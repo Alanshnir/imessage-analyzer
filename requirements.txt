@@ -9,10 +9,7 @@ plotly>=5.17.0
 matplotlib>=3.7.0
 biplist>=1.0.0
 vaderSentiment>=3.3.2
-
-# Optional: OpenAI for RQ9 chatbot
-# If you want to use RQ9, install: pip install openai
-# openai>=1.0.0
+openai>=1.0.0
 
 # Optional: spaCy for better lemmatization (may have compatibility issues with Python 3.12+)
 # If you encounter errors, you can skip this - the app will use NLTK instead
