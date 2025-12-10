@@ -29,7 +29,7 @@ A privacy-first, local-only macOS application for analyzing your iMessage conver
 1. **Clone or download** this repository:
    ```bash
    git clone https://github.com/Alanshnir/imessage_analyzer_deployable.git
-   cd imessage_analyzer
+   cd imessage_analyzer_deployable
    ```
 
 2. **Install dependencies:**

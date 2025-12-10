@@ -4,17 +4,20 @@
 
 ### Error: `ImportError: cannot import name 'triu' from 'scipy.linalg'`
 
-**Cause:** This happens when SciPy version is too new (1.14.0+) and some dependencies haven't been updated yet.
+**Cause:** This happens when gensim 4.3.x is installed with newer SciPy versions. Gensim 4.3.2 and earlier are incompatible with SciPy 1.13+.
 
 **Solution:**
 ```bash
-pip3 install "scipy>=1.9.0,<1.14.0"
+# Upgrade gensim to 4.4.0+ (which fixes the compatibility issue)
+pip3 install --upgrade gensim>=4.4.0
 ```
 
-Or reinstall all dependencies:
+Or reinstall all dependencies (which will get the correct versions):
 ```bash
 pip3 install --upgrade --force-reinstall -r requirements.txt
 ```
+
+**Note:** The `requirements.txt` file now requires `gensim>=4.4.0` to prevent this issue. If you're using an older version of the requirements file, make sure to upgrade gensim manually.
 
 ### Error: `ModuleNotFoundError: No module named 'streamlit'`
 
