@@ -5,7 +5,9 @@ A privacy-first, local-only macOS application for analyzing your iMessage conver
 **macOS only** - iMessage database access requires macOS.
 
 **Demo Video**
-*[ https://github.com/Alanshnir/imessage-analyzer/issues/1#issue-3713285462 ]*
+
+<video src="https://github.com/user-attachments/assets/4ebe13ec-5917-4f66-bb06-079f99d2e2c1" controls></video>
+
 
 ## Research Questions
 
